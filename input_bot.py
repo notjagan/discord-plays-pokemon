@@ -11,17 +11,14 @@ from pyboy import PyBoy, WindowEvent
 
 @unique
 class GameAction(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return max(last_values) + 1
-
-    LEFT = WindowEvent.PRESS_ARROW_LEFT
-    RIGHT = WindowEvent.PRESS_ARROW_RIGHT
-    UP = WindowEvent.PRESS_ARROW_UP
-    DOWN = WindowEvent.PRESS_ARROW_DOWN
-    START = WindowEvent.PRESS_BUTTON_START
-    SELECT = WindowEvent.PRESS_BUTTON_SELECT
-    A = WindowEvent.PRESS_BUTTON_A
-    B = WindowEvent.PRESS_BUTTON_B
+    LEFT = WindowEvent.PRESS_ARROW_LEFT, WindowEvent.RELEASE_ARROW_LEFT
+    RIGHT = WindowEvent.PRESS_ARROW_RIGHT, WindowEvent.RELEASE_ARROW_RIGHT
+    UP = WindowEvent.PRESS_ARROW_UP, WindowEvent.RELEASE_ARROW_UP
+    DOWN = WindowEvent.PRESS_ARROW_DOWN, WindowEvent.RELEASE_ARROW_DOWN
+    START = WindowEvent.PRESS_BUTTON_START, WindowEvent.RELEASE_BUTTON_START
+    SELECT = WindowEvent.PRESS_BUTTON_SELECT, WindowEvent.RELEASE_BUTTON_SELECT
+    A = WindowEvent.PRESS_BUTTON_A, WindowEvent.RELEASE_BUTTON_A
+    B = WindowEvent.PRESS_BUTTON_B, WindowEvent.RELEASE_BUTTON_B
     LOAD = auto()
     QUIT = auto()
     EXIT = auto()
@@ -57,9 +54,6 @@ class GameAction(Enum):
         else:
             return cls.INVALID
 
-    def to_release(value):
-        return value + 8
-
 
 class PyBoyInputDaemon(PyBoy):
     FPS = 60
@@ -82,13 +76,13 @@ class PyBoyInputDaemon(PyBoy):
         self.running = True
         while True:
             if self.buffer:
-                super().send_input(self.buffer.pop())
+                self.send_input(self.buffer.pop())
             self.tick()
             await asyncio.sleep(1 / self.FPS)
 
-    def send_input(self: PyBoyInputDaemon, value: int):
-        self.buffer.append(value)
-        self.buffer.append(GameAction.to_release(value))
+    def buffer_press_and_release(self: PyBoyInputDaemon, button_press: int, button_release: int):
+        self.buffer.append(button_press)
+        self.buffer.append(button_release)
 
     def stop(self, save=True):
         super().stop(save)
@@ -138,7 +132,7 @@ async def on_message(message: discord.Message):
         elif action is GameAction.EXIT:
             input_daemon.exit()
         elif action is not GameAction.INVALID:
-            input_daemon.send_input(action.value)
+            input_daemon.buffer_press_and_release(*action.value)
 
 
 client.run(TOKEN)
