@@ -77,8 +77,10 @@ class PyBoyInputDaemon(PyBoy):
         while True:
             if self.buffer:
                 self.send_input(self.buffer.pop())
-            self.tick()
+            if self.tick():
+                break
             await asyncio.sleep(1 / self.FPS)
+        self.running = False
 
     def buffer_press_and_release(self: PyBoyInputDaemon, button_press: int, button_release: int):
         self.buffer.append(button_press)
@@ -86,7 +88,6 @@ class PyBoyInputDaemon(PyBoy):
 
     def stop(self, save=True):
         super().stop(save)
-        self.running = False
 
     def quit(self: PyBoyInputDaemon):
         save_filename = PyBoyInputDaemon._get_save_filename(self.gamerom_file)
